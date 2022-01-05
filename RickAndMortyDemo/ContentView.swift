@@ -6,11 +6,45 @@
 //
 
 import SwiftUI
+/** https://rickandmortyapi.com/api/character
+*/
+
+/**https://reqbin.com
+ */
 
 struct ContentView: View {
+    @ObservedObject private var viewModel = CharacterViewModel(service: CharacterService())
+    
     var body: some View {
-        Text("Hello, world!")
-            .padding()
+        NavigationView {
+            switch viewModel.state {
+            case let .success(data):
+                List { 
+                     ForEach(data, id:\.id) { item in
+                         Text(item.name)
+                    }
+                }
+                .navigationTitle("Characters")
+            case .loading:
+                ProgressView()
+            default:
+                EmptyView()
+            }
+        }
+        .task {
+            await viewModel.getCharacters()
+        }
+        .alert("Error", isPresented: $viewModel.hasError, presenting: viewModel.state) { state in
+            Button("Retry") {
+                Task {
+                    await viewModel.getCharacters()
+                }
+            }
+        } message: { state in
+            if case let .failed(error) = state {
+                Text(error.localizedDescription)
+            }
+        }
     }
 }
 
